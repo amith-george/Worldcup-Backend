@@ -13,10 +13,12 @@ namespace WorldCupPolling.Controllers
     public class TeamsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public TeamsController(AppDbContext context)
+        public TeamsController(AppDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // 1. GET: api/teams
@@ -79,7 +81,8 @@ namespace WorldCupPolling.Controllers
 
             if (dto.Logo != null && dto.Logo.Length > 0)
             {
-                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Uploads", "logo");
+                var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                var uploadsFolder = Path.Combine(webRoot, "Uploads", "logo");
                 if (!Directory.Exists(uploadsFolder))
                 {
                     Directory.CreateDirectory(uploadsFolder);
