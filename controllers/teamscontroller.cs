@@ -63,10 +63,16 @@ namespace WorldCupPolling.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<TeamResponseDto>> CreateTeam([FromForm] CreateTeamDto dto)
         {
-            // Validation: Ensure team name is unique
-            if (await _context.Teams.AnyAsync(t => t.TeamName == dto.TeamName))
+            // Validation: Ensure team name is unique within the same poll
+            if (await _context.Teams.AnyAsync(t => t.TeamName == dto.TeamName && t.PollId == dto.PollId))
             {
-                return BadRequest("A team with this name already exists.");
+                return BadRequest("A team with this name already exists in this poll.");
+            }
+
+            var pollExists = await _context.Polls.AnyAsync(p => p.Id == dto.PollId);
+            if (!pollExists)
+            {
+                return BadRequest("The specified poll does not exist.");
             }
 
             string logoRelativePath = string.Empty;
@@ -93,7 +99,8 @@ namespace WorldCupPolling.Controllers
             var team = new Team
             {
                 TeamName = dto.TeamName,
-                LogoUrl = logoRelativePath
+                LogoUrl = logoRelativePath,
+                PollId = dto.PollId
             };
 
             _context.Teams.Add(team);
@@ -122,9 +129,9 @@ namespace WorldCupPolling.Controllers
             }
 
             // Validation: Ensure update doesn't cause a duplicate name with another team
-            if (await _context.Teams.AnyAsync(t => t.TeamName == dto.TeamName && t.Id != id))
+            if (await _context.Teams.AnyAsync(t => t.TeamName == dto.TeamName && t.Id != id && t.PollId == team.PollId))
             {
-                return BadRequest("Another team with this name already exists.");
+                return BadRequest("Another team with this name already exists in this poll.");
             }
 
             team.TeamName = dto.TeamName;
@@ -155,7 +162,7 @@ namespace WorldCupPolling.Controllers
         // 6. GET: api/teams/results
         // Fetches aggregated vote metrics, restricted by the global reveal switch
         [HttpGet("results")]
-        public async Task<ActionResult<IEnumerable<TeamResultDto>>> GetResults()
+        public async Task<ActionResult<IEnumerable<TeamResultDto>>> GetResults([FromQuery] int? pollId = null)
         {
             // Check identity properties from the JWT claims to see if requester is an Admin
             bool isAdmin = User.IsInRole("Admin");
@@ -172,18 +179,27 @@ namespace WorldCupPolling.Controllers
                 return Forbid("The voting results have not been revealed by the administrator yet.");
             }
 
-            // Get the currently active poll
-            var activePoll = await _context.Polls.FirstOrDefaultAsync(p => p.IsActive);
-            int activePollId = activePoll?.Id ?? 0;
+            int targetPollId;
+            if (pollId.HasValue)
+            {
+                targetPollId = pollId.Value;
+            }
+            else
+            {
+                var activePoll = await _context.Polls.FirstOrDefaultAsync(p => p.IsActive);
+                if (activePoll == null) return Ok(new List<TeamResultDto>());
+                targetPollId = activePoll.Id;
+            }
 
-            // Query logic calculating total votes per team for the active poll
+            // Query logic calculating total votes per team for the specific poll
             var results = await _context.Teams
+                .Where(t => t.PollId == targetPollId)
                 .Select(t => new TeamResultDto
                 {
                     Id = t.Id,
                     TeamName = t.TeamName,
                     LogoUrl = t.LogoUrl,
-                    VoteCount = t.Votes.Count(v => v.PollId == activePollId)
+                    VoteCount = t.Votes.Count() // Count all votes for this team, since Team belongs to this Poll
                 })
                 .OrderByDescending(r => r.VoteCount)
                 .ToListAsync();

@@ -10,5 +10,8 @@ namespace WorldCupPolling.DTOs
         public string TeamName { get; set; } = string.Empty;
 
         public IFormFile? Logo { get; set; }
+
+        [Required(ErrorMessage = "PollId is required.")]
+        public int PollId { get; set; }
     }
 }
