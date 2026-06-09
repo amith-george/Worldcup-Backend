@@ -37,7 +37,7 @@ namespace WorldCupPolling.Controllers
         }
 
         // 2. GET: api/teams/{id}
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<TeamResponseDto>> GetTeam(int id)
         {
             var team = await _context.Teams

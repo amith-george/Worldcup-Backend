@@ -73,8 +73,14 @@ namespace WorldCupPolling.Controllers
         // DEVELOPMENT HELPER: Endpoint to easily create your initial Admin
         // -------------------------------------------------------------------
         [HttpPost("register-admin")]
-        public async Task<IActionResult> RegisterAdmin([FromBody] RegisterDto request)
+        public async Task<IActionResult> RegisterAdmin([FromQuery] string secretKey, [FromBody] RegisterDto request)
         {
+            var expectedSecret = Environment.GetEnvironmentVariable("ADMIN_REGISTRATION_KEY");
+            if (string.IsNullOrEmpty(expectedSecret) || secretKey != expectedSecret)
+            {
+                return Unauthorized("Invalid or missing secret registration key.");
+            }
+
             if (await _context.Users.AnyAsync(u => u.Username == request.Username))
             {
                 return BadRequest("Username already exists.");
