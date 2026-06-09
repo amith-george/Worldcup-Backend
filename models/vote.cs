@@ -19,5 +19,11 @@ namespace WorldCupPolling.Models
 
         [ForeignKey("TeamId")]
         public virtual Team? Team { get; set; }
+
+        [Required]
+        public int PollId { get; set; }
+
+        [ForeignKey("PollId")]
+        public virtual Poll? Poll { get; set; }
     }
 }

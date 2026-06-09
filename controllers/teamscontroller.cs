@@ -61,7 +61,7 @@ namespace WorldCupPolling.Controllers
         // Strict Admin Only verification
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<TeamResponseDto>> CreateTeam([FromBody] CreateTeamDto dto)
+        public async Task<ActionResult<TeamResponseDto>> CreateTeam([FromForm] CreateTeamDto dto)
         {
             // Validation: Ensure team name is unique
             if (await _context.Teams.AnyAsync(t => t.TeamName == dto.TeamName))
@@ -69,10 +69,31 @@ namespace WorldCupPolling.Controllers
                 return BadRequest("A team with this name already exists.");
             }
 
+            string logoRelativePath = string.Empty;
+
+            if (dto.Logo != null && dto.Logo.Length > 0)
+            {
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Uploads", "logo");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(dto.Logo.FileName);
+                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await dto.Logo.CopyToAsync(fileStream);
+                }
+
+                logoRelativePath = $"/Uploads/logo/{uniqueFileName}";
+            }
+
             var team = new Team
             {
                 TeamName = dto.TeamName,
-                LogoUrl = dto.LogoUrl
+                LogoUrl = logoRelativePath
             };
 
             _context.Teams.Add(team);
@@ -151,14 +172,18 @@ namespace WorldCupPolling.Controllers
                 return Forbid("The voting results have not been revealed by the administrator yet.");
             }
 
-            // Query logic calculating total votes per team
+            // Get the currently active poll
+            var activePoll = await _context.Polls.FirstOrDefaultAsync(p => p.IsActive);
+            int activePollId = activePoll?.Id ?? 0;
+
+            // Query logic calculating total votes per team for the active poll
             var results = await _context.Teams
                 .Select(t => new TeamResultDto
                 {
                     Id = t.Id,
                     TeamName = t.TeamName,
                     LogoUrl = t.LogoUrl,
-                    VoteCount = t.Votes.Count
+                    VoteCount = t.Votes.Count(v => v.PollId == activePollId)
                 })
                 .OrderByDescending(r => r.VoteCount)
                 .ToListAsync();

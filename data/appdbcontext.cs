@@ -13,14 +13,15 @@ namespace WorldCupPolling.Data
         public DbSet<Team> Teams { get; set; }
         public DbSet<Vote> Votes { get; set; }
         public DbSet<SystemSetting> SystemSettings { get; set; }
+        public DbSet<Poll> Polls { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Enforce the constraint: One User can only have One Vote
+            // Enforce the constraint: One User can only have One Vote per Poll
             modelBuilder.Entity<Vote>()
-                .HasIndex(v => v.UserId)
+                .HasIndex(v => new { v.UserId, v.PollId })
                 .IsUnique();
 
             // Enforce unique Email addresses
