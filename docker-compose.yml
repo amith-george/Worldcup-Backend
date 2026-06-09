@@ -1,0 +1,44 @@
+services:
+  worldcup-mysql:
+    image: mysql:8.0
+    container_name: worldcup-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: appsecret
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: appsecret
+      MYSQL_DATABASE: worldcupdb
+    ports:
+      - "3307:3306"
+    volumes:
+      - worldcup-mysql-data:/var/lib/mysql
+    networks:
+      - worldcup-net
+
+  worldcup-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: worldcup-api
+    restart: unless-stopped
+    depends_on:
+      - worldcup-mysql
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5024
+      - DB_CONNECTION_STRING=Server=worldcup-mysql;Database=worldcupdb;User=appuser;Password=appsecret;
+      - JWT_KEY=SuperSecretKeyForToDoApiThatShouldBeLongEnoughToWork!1234567890
+      - JWT_ISSUER=WorldCupApi
+      - JWT_AUDIENCE=WorldCupApiClient
+    ports:
+      - "5024:5024"
+    networks:
+      - worldcup-net
+
+volumes:
+  worldcup-mysql-data:
+    external: true
+
+networks:
+  worldcup-net:
+    external: true
