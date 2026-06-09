@@ -1,0 +1,6 @@
+@WorldcupApi_HostAddress = http://localhost:5104
+
+GET {{WorldcupApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
