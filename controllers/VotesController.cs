@@ -31,11 +31,17 @@ namespace WorldCupPolling.Controllers
                 return Unauthorized("Invalid user ID in token.");
             }
 
-            // 2. Check if the user has already voted
-            bool hasVoted = await _context.Votes.AnyAsync(v => v.UserId == userId);
+            var activePoll = await _context.Polls.FirstOrDefaultAsync(p => p.IsActive);
+            if (activePoll == null)
+            {
+                return BadRequest("There is no active poll at the moment.");
+            }
+
+            // 2. Check if the user has already voted in this poll
+            bool hasVoted = await _context.Votes.AnyAsync(v => v.UserId == userId && v.PollId == activePoll.Id);
             if (hasVoted)
             {
-                return BadRequest("You have already cast your vote.");
+                return BadRequest("You have already cast your vote in this poll.");
             }
 
             // 3. Check if the team exists
@@ -49,7 +55,8 @@ namespace WorldCupPolling.Controllers
             var vote = new Vote
             {
                 UserId = userId,
-                TeamId = request.TeamId
+                TeamId = request.TeamId,
+                PollId = activePoll.Id
             };
 
             _context.Votes.Add(vote);
@@ -68,14 +75,20 @@ namespace WorldCupPolling.Controllers
                 return Unauthorized("Invalid user ID in token.");
             }
 
+            var activePoll = await _context.Polls.FirstOrDefaultAsync(p => p.IsActive);
+            if (activePoll == null)
+            {
+                return NotFound("There is no active poll at the moment.");
+            }
+
             var vote = await _context.Votes
                 .Include(v => v.Team)
                 .Include(v => v.User)
-                .FirstOrDefaultAsync(v => v.UserId == userId);
+                .FirstOrDefaultAsync(v => v.UserId == userId && v.PollId == activePoll.Id);
 
             if (vote == null)
             {
-                return NotFound("You have not voted yet.");
+                return NotFound("You have not voted yet in the current poll.");
             }
 
             return Ok(new VoteResponseDto
