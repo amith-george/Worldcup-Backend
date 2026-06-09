@@ -24,16 +24,21 @@ namespace WorldCupPolling.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto request)
         {
-            // 1. Check if the user already exists
+            // 1. Check if the user or email already exists
             if (await _context.Users.AnyAsync(u => u.Username == request.Username))
             {
                 return BadRequest("Username already exists.");
+            }
+            if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+            {
+                return BadRequest("Email already exists.");
             }
 
             // 2. Create the user and hash their password securely using BCrypt
             var user = new User
             {
                 Username = request.Username,
+                Email = request.Email,
                 Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 Role = "User" // Every standard registration defaults to "User"
             };
@@ -48,13 +53,13 @@ namespace WorldCupPolling.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
-            // 1. Find the user by username
-            var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == request.Username);
+            // 1. Find the user by email
+            var user = await _context.Users.SingleOrDefaultAsync(u => u.Email == request.Email);
 
             // 2. If user doesn't exist OR the password doesn't match the hash, reject them
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
             {
-                return Unauthorized("Invalid username or password.");
+                return Unauthorized("Invalid email or password.");
             }
 
             // 3. Generate the JWT token using your service
@@ -85,10 +90,15 @@ namespace WorldCupPolling.Controllers
             {
                 return BadRequest("Username already exists.");
             }
+            if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+            {
+                return BadRequest("Email already exists.");
+            }
 
             var adminUser = new User
             {
                 Username = request.Username,
+                Email = request.Email,
                 Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 Role = "Admin" // Hardcoded to Admin
             };

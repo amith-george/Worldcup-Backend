@@ -23,6 +23,11 @@ namespace WorldCupPolling.Data
                 .HasIndex(v => v.UserId)
                 .IsUnique();
 
+            // Enforce unique Email addresses
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
             // Seed default configuration settings if they don't exist
             modelBuilder.Entity<SystemSetting>().HasData(
                 new SystemSetting { Key = "AreResultsRevealed", Value = "false" }
