@@ -36,6 +36,19 @@ services:
     networks:
       - worldcup-net
 
+  worldcup-frontend:
+    build:
+      context: ../worldcup-frontend
+      dockerfile: Dockerfile
+    container_name: worldcup-frontend
+    restart: unless-stopped
+    depends_on:
+      - worldcup-api
+    ports:
+      - "8081:8081"
+    networks:
+      - worldcup-net
+
 volumes:
   worldcup-mysql-data:
     external: true
