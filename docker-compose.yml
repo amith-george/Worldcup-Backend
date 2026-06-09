@@ -30,6 +30,7 @@ services:
       - JWT_KEY=SuperSecretKeyForToDoApiThatShouldBeLongEnoughToWork!1234567890
       - JWT_ISSUER=WorldCupApi
       - JWT_AUDIENCE=WorldCupApiClient
+      - ADMIN_REGISTRATION_KEY=MySuperSecretAdminKey123
     ports:
       - "5024:5024"
     networks:
