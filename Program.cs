@@ -2,32 +2,36 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using WorldCupPolling.Data; // Your AppDbContext namespace
-using WorldCupPolling.Services; // Your JwtService namespace
+using Microsoft.OpenApi.Models; // Required for Swagger Security Definitions
+using WorldCupPolling.Data;
+using WorldCupPolling.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configure CORS (Allows Angular frontend to make requests to this API)
+// 1. Load the .env file
+DotNetEnv.Env.Load();
+
+// 2. Configure CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularApp",
         policy =>
         {
-            policy.WithOrigins("http://localhost:4200") // Default Angular development port
+            policy.WithOrigins("http://localhost:4200")
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
 });
 
-// 2. Configure Entity Framework with MySQL (Pomelo)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// 3. Configure Entity Framework with MySQL using the .env variable
+var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-// 3. Register custom application services
+// 4. Register custom application services
 builder.Services.AddScoped<JwtService>();
 
-// 4. Configure JWT Authentication
+// 5. Configure JWT Authentication using .env variables
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -41,22 +45,45 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER"),
+        ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_KEY")!))
     };
 });
 
-// 5. Add Controllers support (Replacing Minimal APIs)
 builder.Services.AddControllers();
-
-// Swagger for testing APIs
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+// 6. Configure Swagger to accept JWT Tokens for testing
+builder.Services.AddSwaggerGen(c =>
+{
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -65,14 +92,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// 6. Apply the CORS policy BEFORE Authentication and Authorization
 app.UseCors("AllowAngularApp");
 
-// 7. Core Middleware Security Sequence (Authentication MUST come before Authorization)
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 8. Map the controllers
 app.MapControllers();
 
 app.Run();

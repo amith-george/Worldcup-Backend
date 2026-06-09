@@ -8,13 +8,6 @@ namespace WorldCupPolling.Services
 {
     public class JwtService
     {
-        private readonly IConfiguration _config;
-
-        public JwtService(IConfiguration config)
-        {
-            _config = config;
-        }
-
         public string GenerateToken(User user)
         {
             // 1. Define the claims (the data inside the token)
@@ -26,16 +19,22 @@ namespace WorldCupPolling.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            // 2. Pull the secret key from appsettings.json
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+            // 2. Pull the secret key from the .env variables
+            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
+            if (string.IsNullOrEmpty(jwtKey))
+            {
+                throw new InvalidOperationException("JWT_KEY environment variable is missing. Check your .env file.");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             
             // 3. Choose the signing algorithm
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             // 4. Construct the token
             var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"],
-                audience: _config["Jwt:Audience"],
+                issuer: Environment.GetEnvironmentVariable("JWT_ISSUER"),
+                audience: Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(2), // Token expires in 2 hours
                 signingCredentials: creds
