@@ -3,14 +3,14 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy the project file and restore dependencies
-COPY ["WorldCupApi.csproj", "./"]
-RUN dotnet restore "./WorldCupApi.csproj"
+COPY ["WorldcupApi.csproj", "./"]
+RUN dotnet restore "./WorldcupApi.csproj"
 
 # Copy the rest of the application code
 COPY . .
 
 # Build and publish the application
-RUN dotnet publish "WorldCupApi.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "WorldcupApi.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Use the official ASP.NET Core runtime image for the final stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
@@ -24,4 +24,4 @@ ENV ASPNETCORE_URLS=http://+:5024
 COPY --from=build /app/publish .
 
 # Run the application
-ENTRYPOINT ["dotnet", "WorldCupApi.dll"]
+ENTRYPOINT ["dotnet", "WorldcupApi.dll"]
