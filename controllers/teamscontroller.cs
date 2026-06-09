@@ -59,6 +59,23 @@ namespace WorldCupPolling.Controllers
             return Ok(team);
         }
 
+        // 2.5. GET: api/teams/poll/{pollId}
+        [HttpGet("poll/{pollId:int}")]
+        public async Task<ActionResult<IEnumerable<TeamResponseDto>>> GetTeamsByPoll(int pollId)
+        {
+            var teams = await _context.Teams
+                .Where(t => t.PollId == pollId)
+                .Select(t => new TeamResponseDto
+                {
+                    Id = t.Id,
+                    TeamName = t.TeamName,
+                    LogoUrl = t.LogoUrl
+                })
+                .ToListAsync();
+
+            return Ok(teams);
+        }
+
         // 3. POST: api/teams
         // Strict Admin Only verification
         [HttpPost]

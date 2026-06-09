@@ -31,32 +31,32 @@ namespace WorldCupPolling.Controllers
                 return Unauthorized("Invalid user ID in token.");
             }
 
-            var activePoll = await _context.Polls.FirstOrDefaultAsync(p => p.IsActive);
-            if (activePoll == null)
+            // 2. Check if the team exists to get its PollId
+            var team = await _context.Teams.Include(t => t.Poll).FirstOrDefaultAsync(t => t.Id == request.TeamId);
+            if (team == null)
             {
-                return BadRequest("There is no active poll at the moment.");
+                return NotFound("The selected team does not exist.");
             }
 
-            // 2. Check if the user has already voted in this poll
-            bool hasVoted = await _context.Votes.AnyAsync(v => v.UserId == userId && v.PollId == activePoll.Id);
+            // 3. Check if the poll is active
+            if (team.Poll == null || !team.Poll.IsActive)
+            {
+                return BadRequest("The poll for this team is not currently active.");
+            }
+
+            // 4. Check if the user has already voted in this specific poll
+            bool hasVoted = await _context.Votes.AnyAsync(v => v.UserId == userId && v.PollId == team.PollId);
             if (hasVoted)
             {
                 return BadRequest("You have already cast your vote in this poll.");
             }
 
-            // 3. Check if the team exists
-            var teamExists = await _context.Teams.AnyAsync(t => t.Id == request.TeamId);
-            if (!teamExists)
-            {
-                return NotFound("The selected team does not exist.");
-            }
-
-            // 4. Save the vote
+            // 5. Save the vote
             var vote = new Vote
             {
                 UserId = userId,
                 TeamId = request.TeamId,
-                PollId = activePoll.Id
+                PollId = team.PollId
             };
 
             _context.Votes.Add(vote);
@@ -65,9 +65,9 @@ namespace WorldCupPolling.Controllers
             return Ok(new { message = "Your vote has been submitted successfully." });
         }
 
-        // GET: api/votes/my-vote
-        [HttpGet("my-vote")]
-        public async Task<ActionResult<VoteResponseDto>> GetMyVote()
+        // GET: api/votes/my-vote/{pollId}
+        [HttpGet("my-vote/{pollId:int}")]
+        public async Task<ActionResult<VoteResponseDto>> GetMyVote(int pollId)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdString, out int userId))
@@ -75,20 +75,20 @@ namespace WorldCupPolling.Controllers
                 return Unauthorized("Invalid user ID in token.");
             }
 
-            var activePoll = await _context.Polls.FirstOrDefaultAsync(p => p.IsActive);
-            if (activePoll == null)
+            var pollExists = await _context.Polls.AnyAsync(p => p.Id == pollId);
+            if (!pollExists)
             {
-                return NotFound("There is no active poll at the moment.");
+                return NotFound("The specified poll does not exist.");
             }
 
             var vote = await _context.Votes
                 .Include(v => v.Team)
                 .Include(v => v.User)
-                .FirstOrDefaultAsync(v => v.UserId == userId && v.PollId == activePoll.Id);
+                .FirstOrDefaultAsync(v => v.UserId == userId && v.PollId == pollId);
 
             if (vote == null)
             {
-                return NotFound("You have not voted yet in the current poll.");
+                return NotFound("You have not voted yet in this poll.");
             }
 
             return Ok(new VoteResponseDto
