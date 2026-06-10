@@ -89,6 +89,7 @@ if (!Directory.Exists(webRootPath))
     Directory.CreateDirectory(webRootPath);
 }
 builder.Environment.WebRootPath = webRootPath;
+builder.Environment.WebRootFileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webRootPath);
 
 var app = builder.Build();
 
