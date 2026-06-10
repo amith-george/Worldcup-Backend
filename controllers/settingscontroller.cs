@@ -80,6 +80,17 @@ namespace WorldCupPolling.Controllers
                 setting.Value = dto.Value;
             }
 
+            // State Syncing: If revealing results, deactivate all active polls
+            if (key.Equals("AreResultsRevealed", StringComparison.OrdinalIgnoreCase) && 
+                dto.Value.Equals("true", StringComparison.OrdinalIgnoreCase))
+            {
+                var activePolls = await _context.Polls.Where(p => p.IsActive).ToListAsync();
+                foreach (var poll in activePolls)
+                {
+                    poll.IsActive = false;
+                }
+            }
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = $"Setting '{setting.Key}' updated successfully.", newValue = setting.Value });
