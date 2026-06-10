@@ -82,6 +82,14 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Ensure wwwroot directory exists before building so UseStaticFiles works properly
+var webRootPath = builder.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+if (!Directory.Exists(webRootPath))
+{
+    Directory.CreateDirectory(webRootPath);
+}
+builder.Environment.WebRootPath = webRootPath;
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

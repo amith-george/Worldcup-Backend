@@ -33,6 +33,8 @@ services:
       - ADMIN_REGISTRATION_KEY=MySuperSecretAdminKey123
     ports:
       - "5024:5024"
+    volumes:
+      - ./wwwroot:/app/wwwroot
     networks:
       - worldcup-net
 
