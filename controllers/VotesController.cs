@@ -44,6 +44,13 @@ namespace WorldCupPolling.Controllers
                 return BadRequest("The poll for this team is not currently active.");
             }
 
+            // 3.5 Check if results are revealed
+            var revealSetting = await _context.SystemSettings.FirstOrDefaultAsync(s => s.Key == "AreResultsRevealed");
+            if (revealSetting != null && revealSetting.Value.ToLower() == "true")
+            {
+                return BadRequest("Voting is closed because the results have already been revealed.");
+            }
+
             // 4. Check if the user has already voted in this specific poll
             bool hasVoted = await _context.Votes.AnyAsync(v => v.UserId == userId && v.PollId == team.PollId);
             if (hasVoted)
